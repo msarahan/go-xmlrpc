@@ -349,3 +349,56 @@ func TestParseMixedArray(t *testing.T) {
 		t.Fatal("expected array with 4 entries")
 	}
 }
+
+
+type ParseMixedArrayOfArraysHandler struct {
+}
+
+func (h *ParseMixedArrayOfArraysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(`
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><array><data>
+<value><array><data>
+<value><string>reachy</string></value>
+<value><string>1.0.0a3</string></value>
+<value><int>1586268688</int></value>
+<value><string>add source file reachy-1.0.0a3.tar.gz</string></value>
+<value><int>6970293</int></value>
+</data></array></value>
+<value><array><data>
+<value><string>annotell-auth</string></value>
+<value><string>1.2.0</string></value>
+<value><int>1586268727</int></value>
+<value><string>new release</string></value>
+<value><int>6970294</int></value>
+</data></array></value>
+</data></array></value>
+</param>
+</params>
+</methodResponse>
+		`))
+}
+
+func TestParseMixedArrayOfArrays(t *testing.T) {
+	ts := httptest.NewServer(&ParseMixedArrayOfArraysHandler{})
+	defer ts.Close()
+
+	client := NewClient(ts.URL + "/")
+	res, err := client.Call("Irrelevant")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.(Array)) != 2 {
+		t.Fatal("expected outer array with 2 entries")
+	}
+
+	inner := res.(Array)[0]
+	if len(inner.(Array)) != 5 {
+		t.Fatal("expected inner array with 5 entries")
+	}
+}

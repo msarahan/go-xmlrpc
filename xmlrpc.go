@@ -170,10 +170,15 @@ func next(p *xml.Decoder) (xml.Name, interface{}, error) {
 				break
 			}
 			ar = append(ar, value)
-
 			if reflect.ValueOf(value).Kind() != reflect.Map {
 				nextStart(p)
 			}
+			isEnd, e := isArrayEnd(p)
+			if e != nil {
+				// might want to tell people what the error is?
+				break
+			}
+			if isEnd {break}
 		}
 		return xml.Name{}, ar, nil
 	case "nil":
@@ -185,6 +190,7 @@ func next(p *xml.Decoder) (xml.Name, interface{}, error) {
 	}
 	return se.Name, nv, e
 }
+
 func nextStart(p *xml.Decoder) (xml.StartElement, error) {
 	for {
 		t, e := p.Token()
@@ -197,6 +203,25 @@ func nextStart(p *xml.Decoder) (xml.StartElement, error) {
 		}
 	}
 	panic("unreachable")
+}
+func isArrayEnd(p *xml.Decoder) (bool, error) {
+	// make a copy of the decoder so that we don't mess up its place.
+	var pCopy xml.Decoder
+	pCopy = *p
+	// look up to 4 tags ahead. If it is a closing tag, it's the end of the array.
+	for i := 0; i < 4; i++ {
+		t, e := pCopy.Token()
+		if e != nil {
+			return true, e
+		}
+		switch t := t.(type) {
+		case xml.EndElement:
+			if t.Name.Local == "array" {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func toXml(v interface{}, typ bool) (s string) {
